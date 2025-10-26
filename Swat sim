@@ -1,0 +1,98 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Sigma Hub",
+    Icon = 0,
+    LoadingTitle = "SWAT Simulator",
+    LoadingSubtitle = "by watligma",
+    ShowText = "Click here pro",
+    Theme = "Default",
+    ToggleUIKeybind = "K",
+    KeySystem = false,
+    KeySettings = {
+        Title = "Key System",
+        Subtitle = "Get your key in Discord!",
+        Note = "Join the server to get the key!",
+        FileName = "SigmaHubKey",
+        SaveKey = false,
+        GrabKeyFromSite = false,
+        Key = {"solynotissigma"}
+    }
+})
+
+local Tab = Window:CreateTab("Main", 4483362458)
+
+local toolName = ""
+
+Tab:CreateInput({
+    Name = "Tool Name",
+    PlaceholderText = "Enter the tool name here",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        toolName = Text
+    end
+})
+
+Tab:CreateButton({
+    Name = "Give Tool Once",
+    Callback = function()
+        if toolName ~= "" then
+            game:GetService("ReplicatedStorage").giveTool:FireServer(toolName)
+        end
+    end
+})
+
+local expValue = 0
+local expRunning = false
+
+Tab:CreateInput({
+    Name = "XP Amount",
+    PlaceholderText = "Enter XP amount",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then
+            expValue = num
+        end
+    end
+})
+
+Tab:CreateToggle({
+    Name = "Auto Add XP",
+    CurrentValue = false,
+    Flag = "AutoAddXP",
+    Callback = function(State)
+        expRunning = State
+        if expRunning then
+            task.spawn(function()
+                while expRunning do
+                    if expValue > 0 then
+                        game:GetService("ReplicatedStorage").addXP:FireServer(expValue)
+                    end
+                    task.wait(1)
+                end
+            end)
+        end
+    end
+})
+
+local nameInput = ""
+
+Tab:CreateInput({
+    Name = "Change Any Name",
+    PlaceholderText = "Put any name you like",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        nameInput = Text
+    end
+})
+
+Tab:CreateButton({
+    Name = "Name Yourself",
+    Callback = function()
+        if nameInput ~= "" then
+            local player = game.Players.LocalPlayer
+            game:GetService("ReplicatedStorage").namer:FireServer(nameInput, player)
+        end
+    end
+})
