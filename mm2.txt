@@ -1,0 +1,186 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+
+local esp = false
+local farm = false
+local drawings = {}
+
+local roles = {
+Murderer = Color3.fromRGB(255,0,0),
+Innocent = Color3.fromRGB(0,255,0)
+}
+
+local function getRole(p)
+if p.Character and p.Character:FindFirstChild("Knife") then
+return "Murderer"
+end
+if p.Backpack:FindFirstChild("Knife") then
+return "Murderer"
+end
+return "Innocent"
+end
+
+local function addESP(p)
+if p == lp or drawings[p] then return end
+local box = Drawing.new("Square")
+box.Thickness = 2
+box.Filled = false
+box.Transparency = 1
+local text = Drawing.new("Text")
+text.Size = 16
+text.Center = true
+text.Outline = true
+text.Font = 2
+drawings[p] = {box = box, text = text}
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+addESP(p)
+end
+
+Players.PlayerAdded:Connect(addESP)
+Players.PlayerRemoving:Connect(function(p)
+if drawings[p] then
+drawings[p].box:Remove()
+drawings[p].text:Remove()
+drawings[p] = nil
+end
+end)
+
+local sg = Instance.new("ScreenGui")
+sg.Name = "MM2StrippedGod"
+sg.ResetOnSpawn = false
+sg.Parent = lp.PlayerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0,380,0,300)
+main.Position = UDim2.new(0.5,-190,0.5,-225)
+main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = sg
+
+local UICorner = Instance.new("UICorner", main)
+UICorner.CornerRadius = UDim.new(0,15)
+
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1,0,0,80)
+titleBar.BackgroundColor3 = Color3.fromRGB(200,20,20)
+titleBar.Parent = main
+
+local UICorner2 = Instance.new("UICorner", titleBar)
+UICorner2.CornerRadius = UDim.new(0,15)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.75,0,1,0)
+title.Position = UDim2.new(0,20,0,0)
+title.BackgroundTransparency = 1
+title.Text = "MM2 autofarm by WutDehHell"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
+
+local yPos = 100
+
+local function createToggle(name,callback)
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0.9,0,0,80)
+btn.Position = UDim2.new(0.05,0,0,yPos)
+btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+btn.Text = name..": OFF"
+btn.TextColor3 = Color3.new(1,1,1)
+btn.TextScaled = true
+btn.Font = Enum.Font.GothamBold
+btn.Parent = main
+
+local corner = Instance.new("UICorner",btn)
+corner.CornerRadius = UDim.new(0,12)
+
+local state = false
+btn.MouseButton1Click:Connect(function()
+state = not state
+btn.Text = name..": "..(state and "ON" or "OFF")
+btn.BackgroundColor3 = state and Color3.fromRGB(0,180,0) or Color3.fromRGB(40,40,40)
+callback(state)
+end)
+yPos = yPos + 100
+
+end
+
+createToggle("Role ESP",function(v) esp=v end)
+createToggle("Auto Farm Coins/Gifts",function(v) farm=v end)
+
+RunService.RenderStepped:Connect(function()
+if not esp then
+for _,d in pairs(drawings) do
+d.box.Visible = false
+d.text.Visible = false
+end
+return
+end
+for p,d in pairs(drawings) do
+if p.Character and p.Character:FindFirstChild("Head") then
+local head = p.Character.Head
+local pos,on = cam:WorldToViewportPoint(head.Position+Vector3.new(0,3,0))
+if on then
+local role = getRole(p)
+local color = roles[role] or Color3.new(1,1,1)
+d.box.Size = Vector2.new(2000/pos.Z,3500/pos.Z)
+d.box.Position = Vector2.new(pos.X-d.box.Size.X/2,pos.Y-d.box.Size.Y/2)
+d.box.Color = color
+d.box.Visible = true
+d.text.Text = p.Name.."\n["..role.."]"
+d.text.Position = Vector2.new(pos.X,pos.Y-40)
+d.text.Color = color
+d.text.Visible = true
+else
+d.box.Visible = false
+d.text.Visible = false
+end
+else
+d.box.Visible = false
+d.text.Visible = false
+end
+end
+end)
+
+spawn(function()
+while true do
+wait(0.05)
+if farm then
+local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+if not root then continue end
+local closest = nil
+local distMin = math.huge
+for _,obj in pairs(workspace:GetDescendants()) do
+if (obj.Name=="Coin_Server" or obj.Name=="Gift_Server" or string.find(obj.Name:lower(),"coin") or string.find(obj.Name:lower(),"gift")) and obj:FindFirstChild("TouchInterest") then
+local dist = (root.Position-obj.Position).Magnitude
+if dist<distMin then
+distMin = dist
+closest = obj
+end
+end
+end
+if closest then
+local pos = root.Position
+local target = CFrame.new(closest.Position.X,pos.Y+0.5,closest.Position.Z)
+local tween = TweenService:Create(root,TweenInfo.new(math.clamp(distMin/20,0.05,4),Enum.EasingStyle.Linear),{CFrame=target})
+tween:Play()
+tween.Completed:Wait()
+firetouchinterest(root,closest,0)
+firetouchinterest(root,closest,1)
+end
+end
+end
+end)
+
+print("MM2 STRIPPED GOD 2025 - FAST Safe Autofarm Active")
+
+Add "get gun" button
+If the sheriff die and the gun is dropped if i click the "get gun" button i teleport to the dropped gun and i get it
