@@ -1,3 +1,8 @@
+-- what you doing here skid?
+-- stealing this script can result s fine and copyright 
+-- stealing this you agree to pay a fine of 2 dollars
+--
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -181,6 +186,3 @@ end
 end)
 
 print("MM2 STRIPPED GOD 2025 - FAST Safe Autofarm Active")
-
-Add "get gun" button
-If the sheriff die and the gun is dropped if i click the "get gun" button i teleport to the dropped gun and i get it
