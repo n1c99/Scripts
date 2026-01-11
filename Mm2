@@ -1,0 +1,308 @@
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+	Name = "MM2",
+	Icon = 0,
+	LoadingTitle = "mm2 script",
+	LoadingSubtitle = "by WutDehHell",
+	ShowText = "Rayfield",
+	Theme = "Default",
+	ToggleUIKeybind = "K",
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = nil,
+		FileName = "MM2 script"
+	},
+	KeySystem = false
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local lp = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+
+local espEnabled = false
+local autoFarmEnabled = false
+local farmThread
+local espTexts = {}
+
+getgenv().FPDH = workspace.FallenPartsDestroyHeight
+
+local roleColors = {
+	Murderer = Color3.fromRGB(255, 0, 0),
+	Sheriff = Color3.fromRGB(0, 150, 255),
+	Innocent = Color3.fromRGB(0, 255, 0)
+}
+
+local function hasTool(player, toolNames)
+	for _, name in ipairs(toolNames) do
+		if (player.Character and player.Character:FindFirstChild(name))
+			or (player.Backpack and player.Backpack:FindFirstChild(name)) then
+			return true
+		end
+	end
+	return false
+end
+
+local function getRole(player)
+	if hasTool(player, {"Knife"}) then return "Murderer" end
+	if hasTool(player, {"Gun", "Revolver"}) then return "Sheriff" end
+	return "Innocent"
+end
+
+local function getMurderer()
+	for _, v in ipairs(Players:GetPlayers()) do
+		if v ~= lp and v.Character then
+			if v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife") then
+				return v
+			end
+		end
+	end
+end
+
+local function getSheriff()
+	for _, v in ipairs(Players:GetPlayers()) do
+		if v ~= lp and v.Character then
+			if v.Character:FindFirstChild("Gun") or v.Character:FindFirstChild("Revolver")
+				or v.Backpack:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Revolver") then
+				return v
+			end
+		end
+	end
+end
+
+local function fling(TargetPlayer)
+	if not TargetPlayer or not TargetPlayer.Character then return end
+
+	local Character = lp.Character
+	local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+	local RootPart = Humanoid and Humanoid.RootPart
+
+	local TCharacter = TargetPlayer.Character
+	local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
+	if not THumanoid or THumanoid.Health <= 0 then return end
+
+	local TRootPart = THumanoid.RootPart
+	local THead = TCharacter:FindFirstChild("Head")
+	local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
+	local Handle = Accessory and Accessory:FindFirstChild("Handle")
+
+	if RootPart.Velocity.Magnitude < 50 then
+		getgenv().OldPos = RootPart.CFrame
+	end
+
+	local function FPos(BasePart, Pos, Ang)
+		RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
+		Character:SetPrimaryPartCFrame(RootPart.CFrame)
+		RootPart.Velocity = Vector3.new(9e7,9e7*10,9e7)
+		RootPart.RotVelocity = Vector3.new(9e8,9e8,9e8)
+	end
+
+	local function SFBasePart(BasePart)
+		local Angle = 0
+		local Start = tick()
+		repeat
+			if not (THumanoid and THumanoid.Health > 0) then break end
+			Angle += 120
+			FPos(BasePart, CFrame.new(0,1.5,0), CFrame.Angles(math.rad(Angle),0,0))
+			task.wait()
+			FPos(BasePart, CFrame.new(0,-1.5,0), CFrame.Angles(math.rad(Angle),0,0))
+			task.wait()
+			FPos(BasePart, CFrame.new(2.5,1.5,-2.5), CFrame.Angles(math.rad(Angle),0,0))
+			task.wait()
+			FPos(BasePart, CFrame.new(-2.5,-1.5,2.5), CFrame.Angles(math.rad(Angle),0,0))
+			task.wait()
+		until BasePart.Velocity.Magnitude > 500 or tick() - Start > 2
+	end
+
+	workspace.FallenPartsDestroyHeight = 0/0
+
+	local BV = Instance.new("BodyVelocity")
+	BV.Parent = RootPart
+	BV.Velocity = Vector3.new(9e8,9e8,9e8)
+	BV.MaxForce = Vector3.new(1/0,1/0,1/0)
+
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+	if TRootPart then
+		SFBasePart(TRootPart)
+	elseif THead then
+		SFBasePart(THead)
+	elseif Handle then
+		SFBasePart(Handle)
+	end
+
+	BV:Destroy()
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+
+	repeat
+		RootPart.CFrame = getgenv().OldPos
+		Character:SetPrimaryPartCFrame(getgenv().OldPos)
+		Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		for _, x in ipairs(Character:GetChildren()) do
+			if x:IsA("BasePart") then
+				x.Velocity = Vector3.zero
+				x.RotVelocity = Vector3.zero
+			end
+		end
+		task.wait()
+	until (RootPart.Position - getgenv().OldPos.p).Magnitude < 20
+
+	workspace.FallenPartsDestroyHeight = getgenv().FPDH
+end
+
+local Tab = Window:CreateTab("MM2", 4483362458)
+Tab:CreateSection("innocent / sheriff")
+
+Tab:CreateButton({
+	Name = "get gun",
+	Callback = function()
+		local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj.Name == "GunDrop" and obj:IsA("BasePart") then
+				local tween = TweenService:Create(hrp, TweenInfo.new(1), {CFrame = obj.CFrame + Vector3.new(0,3,0)})
+				tween:Play()
+				tween.Completed:Wait()
+				firetouchinterest(hrp, obj, 0)
+				firetouchinterest(hrp, obj, 1)
+				break
+			end
+		end
+	end
+})
+
+Tab:CreateToggle({
+	Name = "role esp",
+	CurrentValue = false,
+	Callback = function(v)
+		espEnabled = v
+		if not v then
+			for _,t in pairs(espTexts) do t:Remove() end
+			table.clear(espTexts)
+		end
+	end
+})
+
+Tab:CreateToggle({
+	Name = "autofarm",
+	CurrentValue = false,
+	Callback = function(v)
+		autoFarmEnabled = v
+		if v and not farmThread then
+			farmThread = task.spawn(function()
+				while autoFarmEnabled do
+					task.wait(0.05)
+					local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+					if not root then continue end
+					local closest, dist = nil, math.huge
+					for _, obj in pairs(workspace:GetDescendants()) do
+						if obj:IsA("BasePart") and obj:FindFirstChild("TouchInterest")
+							and (obj.Name:lower():find("coin") or obj.Name:lower():find("gift")) then
+							local d = (root.Position - obj.Position).Magnitude
+							if d < dist then
+								dist = d
+								closest = obj
+							end
+						end
+					end
+					if closest then
+						local tween = TweenService:Create(root, TweenInfo.new(math.clamp(dist/20,0.05,4)),
+							{CFrame = CFrame.new(closest.Position + Vector3.new(0,2,0))})
+						tween:Play()
+						tween.Completed:Wait()
+						firetouchinterest(root, closest, 0)
+						firetouchinterest(root, closest, 1)
+					end
+				end
+				farmThread = nil
+			end)
+		end
+	end
+})
+
+Tab:CreateButton({
+	Name = "fling murderer",
+	Callback = function()
+		task.spawn(function()
+			while true do
+				task.wait(0.25)
+				local murd = getMurderer()
+				if not murd or not murd.Character then break end
+				local hum = murd.Character:FindFirstChildOfClass("Humanoid")
+				local hrp = murd.Character:FindFirstChild("HumanoidRootPart")
+				if not hum or hum.Health <= 0 or not hrp then break end
+				if hrp.Position.Y <= workspace.FallenPartsDestroyHeight then break end
+				fling(murd)
+			end
+		end)
+	end
+})
+
+Tab:CreateButton({
+	Name = "fling sheriff",
+	Callback = function()
+		task.spawn(function()
+			while true do
+				task.wait(0.25)
+				local sheriff = getSheriff()
+				if not sheriff or not sheriff.Character then break end
+				local hum = sheriff.Character:FindFirstChildOfClass("Humanoid")
+				local hrp = sheriff.Character:FindFirstChild("HumanoidRootPart")
+				if not hum or hum.Health <= 0 or not hrp then break end
+				if hrp.Position.Y <= workspace.FallenPartsDestroyHeight then break end
+				fling(sheriff)
+			end
+		end)
+	end
+})
+
+Tab:CreateButton({
+	Name = "shoot murderer",
+	Callback = function()
+		task.spawn(function()
+			local murd = getMurderer()
+			if not murd or not murd.Character then return end
+			local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+			local gun = lp.Character and (lp.Character:FindFirstChild("Gun") or lp.Character:FindFirstChild("Revolver"))
+			if not hrp or not gun then return end
+			local targetHRP = murd.Character:FindFirstChild("HumanoidRootPart")
+			if not targetHRP then return end
+			hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,3)
+			local gunKill = ReplicatedStorage.Remotes.Gameplay:FindFirstChild("GunKill")
+			local gunBeam = ReplicatedStorage:FindFirstChild("WeaponEvents") and ReplicatedStorage.WeaponEvents:FindFirstChild("GunBeam")
+			if gunKill then gunKill:FireServer(targetHRP.Position) end
+			if gunBeam then gunBeam:FireServer(targetHRP.Position) end
+		end)
+	end
+})
+
+RunService.RenderStepped:Connect(function()
+	if not espEnabled then return end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= lp and p.Character and p.Character:FindFirstChild("Head") then
+			local pos, onScreen = cam:WorldToViewportPoint(p.Character.Head.Position + Vector3.new(0,2.5,0))
+			if onScreen then
+				if not espTexts[p] then
+					local t = Drawing.new("Text")
+					t.Center = true
+					t.Outline = true
+					t.Size = 16
+					espTexts[p] = t
+				end
+				local role = getRole(p)
+				espTexts[p].Text = p.Name .. " [" .. role .. "]"
+				espTexts[p].Color = roleColors[role]
+				espTexts[p].Position = Vector2.new(pos.X, pos.Y)
+				espTexts[p].Visible = true
+			elseif espTexts[p] then
+				espTexts[p].Visible = false
+			end
+		elseif espTexts[p] then
+			espTexts[p].Visible = false
+		end
+	end
+end)
